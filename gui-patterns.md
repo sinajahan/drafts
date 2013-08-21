@@ -42,23 +42,28 @@ After all this was all "convention over configuration" of Rails. After Rails 3 y
 
 But lets take a closer look now with your object oriented expert hat on. This helper is a ruby module. That means no inheritance, hard reuse...and you don't get to work with your lovely objects. 
 
-## View Objects 
+## View Objects or Presentors
 
 The idea is very simple: Your controller will deligate the logic of view
-related functions to a seperate object.
+related functions to a seperate poro object.
 
-For example we had a requirement to construct a very custom xml view of
-our candidates. Let's start with our view object:
+For example imagine the logic of showing the default candidate avatar when user
+has not provided any image.
 
 ````ruby
   class CandidateView
-    def initialize candidates
-      @candidates = candidates
+    def initialize candidate
+      @candidat = candidate
     end
   
-    def xml
-      "<candidates>#{@candidates.map{ |c| c.name }.join("|")}</candidates>"
+    def avatar_name
+      if candidate.avatar_image_name.present?
+        candidate.avatar_image_name
+      else
+        "default.png"
+      end
     end
+
   end
 ````
 
@@ -80,8 +85,8 @@ And then I use it in my Controller:
 ````ruby
   class WelcomeController < ApplicationController
     ...
-    def xml
-      @view = CandidateView.new Candidate.all
+    def index 
+      @view = CandidateView.new Candidate.find(params[:id])
     end
   end
 ````
@@ -90,7 +95,7 @@ And finally my view will just call the required method on the `@view`
 object:
 
 ````erb
-  <%= @view.xml =%>
+  <%= @view.avatar_name =%>
 ````
 
 As you saw in above example we are extracting view logic to a separate
@@ -98,8 +103,28 @@ class without any need from Rails magic. Sience we are using plain old
 ruby object there is no magic required in testing these objects either.
 
 
-## Presenters
+## Decorators
+
+Decorator pattern was originally introduced by [Gang of Four's book](http://www.amazon.ca/Design-Patterns-Elements-Reusable-Object-Oriented/dp/0201633612).
+It is a design pattern that allows behaviour to be added to an
+individual object.
+
+In our view object example we are initializating a new class and having
+methods implement view logic. In decorator pattern for view templates we
+are wrapping the active record model class and decorating it with new
+behaviour.
+
+There are multiple ways to implement a decorator pattern in Rails. There
+is an awesome gem called [draper](https://github.com/drapergem/draper)
+only for this purpose. Rails cast has [an episode](http://railscasts.com/episodes/286-draper) on it too which he goes
+through the process of refactoring a heavy view templater and helper to
+decorator design pattern.
+
+The idea of using a decorator design pattern for extracting view logic
+is simple. You have your rails model class that has all the data you
+want. Now lets add some methods as behaviour to it for view and have
+them separated in their own class.
 
 ## Exhibitors
 
-## Decorators 
+
