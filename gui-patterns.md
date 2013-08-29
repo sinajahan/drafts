@@ -1,6 +1,6 @@
 # 5 GUI Patterns That help to have skinny rails classes
 
-Big classes can create maintainability problems in application. They are hard to change and everyone on your team hatest to touch them. You start with clean beautiful class and before you know it has become hundred lines of code. Big classes are usually a sign that your class is doing too many things. They violate the [single responsibility principle](https://en.wikipedia.org/wiki/Single_responsibility_principle) and they should be refactored. Here I am going to review a couple of refactoring patters specific to user interface that you can have in your toolbox. Applying these kind of extracting logic from classes should be a an ongoing process in any code base.
+Big classes can create maintainability problems in application. They are hard to change and everyone on your team hates to touch them. You start with clean beautiful class and before you know it has become hundred lines of code. Big classes are usually a sign that your class is doing too many things. They violate the [single responsibility principle](https://en.wikipedia.org/wiki/Single_responsibility_principle) and they should be refactored. Here I am going to review a couple of refactoring patters specific to user interface that you can have in your toolbox. Applying these kind of extracting logic from classes should be an ongoing process in any code base.
 
 ## View Helpers from ActionController 
 ### Know them but you can do better
@@ -44,8 +44,8 @@ But lets take a closer look now with your object oriented expert hat on. This he
 
 ## View Objects or Presentors
 
-The idea is very simple: Your controller will deligate the logic of view
-related functions to a seperate poro object.
+The idea is very simple: Your controller will delegate the logic of view
+related functions to a separate poro object.
 
 For example imagine the logic of showing the default candidate avatar when user
 has not provided any image.
@@ -109,7 +109,7 @@ Decorator pattern was originally introduced by [Gang of Four's book](http://www.
 It is a design pattern that allows behaviour to be added to an
 individual object.
 
-In our view object example we are initializating a new class and having
+In our view object example we are initializing a new class and having
 methods implement view logic. In decorator pattern for view templates we
 are wrapping the active record model class and decorating it with new
 behaviour.
@@ -117,14 +117,122 @@ behaviour.
 There are multiple ways to implement a decorator pattern in Rails. There
 is an awesome gem called [draper](https://github.com/drapergem/draper)
 only for this purpose. Rails cast has [an episode](http://railscasts.com/episodes/286-draper) on it too which he goes
-through the process of refactoring a heavy view templater and helper to
+through the process of refactoring a heavy view template and helper to
 decorator design pattern.
 
 The idea of using a decorator design pattern for extracting view logic
 is simple. You have your rails model class that has all the data you
-want. Now lets add some methods as behaviour to it for view and have
+want. Now lets add some methods as behavior to it for view and have
 them separated in their own class.
 
-## Exhibitors
+## Exhibit pattern
 
+The idea came from Avdi Grim in his book [Objects on Rails](http://objectsonrails.com/). The main power of exhibit pattern is when you want to render different partials based on some view logic. Imagine the following code: rendering different partial templates based on a flag on candidate.
 
+````erb
+<% if @candidate.distorted? %>
+  <%= render 'distorted' %>
+<% else %>
+  <%= render 'pass' %>
+<% end %>
+````
+
+and as usual you put your partials like this:
+
+````
+...
+ ▾ views/
+    ▾ candidates/
+        _distorted.html.erb
+        _pass.html.erb
+        ...
+
+````
+
+This is almost always a bad idea. Putting view logic inside your view
+file is hard to test and hard to maintain. Now lets see how exhibit
+pattern can be applied here. Model objects are contain business
+knowledge and view template contain the look and feel. Think of an
+exhibit as a middle object between these two. It takes the model class
+and added some extra behavior to it. This added behavior in our
+example is the logic to render different partial views.
+
+Lets add our exhibitors. I have created a folder called exhibits under
+app and have added it in `config.autoload_path` so rails picks it up.
+Here is the exhibit class for distorted:
+
+````ruby
+require 'delegate'
+
+class DistortedExhibit < SimpleDelegator
+  def initialize(model, context)
+    @context = context
+    super(model)
+  end
+
+  def render_body
+    @context.render(partial: "distorted")
+  end
+end
+````
+
+As you can see we are using the ruby simple delegator class. It simply
+wraps class and delegates all method calls to the wrapped class. Now you
+can simple add your additional behaviour to the class.
+
+In our example I have wrapped the `candidate` model with additional
+method for render body for distorted candidate. Lets add an exhibit for
+pass candidates too:
+
+````ruby
+require 'delegate'
+
+class PassExhibit < SimpleDelegator
+  def initialize(model, context)
+    @context = context
+    super(model)
+  end
+
+  def render_body
+    @context.render(partial: "pass")
+  end
+end
+````
+
+Now the challenge is where to put the logic of using which exhibitor.
+Instead of scattering the if/else statements lets have a single helper
+witch knows which decided which exhibitor(s) apply to a given object:
+
+````ruby
+module ExhibitsHelper
+
+  def exhibit(model, context)
+    case model.class.name
+    when 'Candidate'
+      if model.distorted?
+        DistortedExhibit.new(model, context)
+      else
+        PassExhibit.new(model, context)
+      end
+    else
+      model
+    end
+  end
+end
+````
+
+I have also added exhibits as a helper to `application_controller.rb` file:
+
+````ruby
+class ApplicationController < ActionController::Base
+  ...
+  helper :exhibits
+end
+````
+
+Now we can have a much simpler view template:
+
+````erb
+<% candidate = exhibit(@candidate, self) %>
+<%= candidate.render_body %>
+````
