@@ -11,7 +11,7 @@ When I wrote my "hello world" application in Rails I fell in love with [view hel
   module CandidateHelper
   # app/helpers/candidate_helper.rb
   ...
-    def caption candidate
+    def caption(candidate)
       candidate.distorted? ? "Application Distortion" : "Application Pass"
     end
   ...
@@ -52,7 +52,7 @@ has not provided any image.
 
 ````ruby
   class CandidateView
-    def initialize candidate
+    def initialize(candidate)
       @candidat = candidate
     end
   
@@ -86,7 +86,7 @@ And then I use it in my Controller:
   class WelcomeController < ApplicationController
     ...
     def index 
-      @view = CandidateView.new Candidate.find(params[:id])
+      @view = CandidateView.new(Candidate.find(params[:id]))
     end
   end
 ````
