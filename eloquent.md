@@ -363,3 +363,185 @@ class Document
 end
 
 Run this code and you will end up with class-level Document.find_by_name and find_by_id methods.
+
+
+When you tack a block onto the end of a method call, Ruby will package up the block as sort of a secret argument and (behind the scenes) passes this secret argument to the method. Inside the method you can detect whether your caller has actually passed in a block with the block_given? method and fire off the block (if there is one) with yield:
+
+def do_something
+  yield if block_given?
+end
+
+class Document
+  # Most of the class omitted...
+  def each_word_pair
+    word_array = words
+    index = 0
+    while index < (word_array.size-1)
+      yield word_array[index], word_array[index+1]
+    index += 1 end
+  end 
+end
+
+doc = Document.new('Donuts', '?', 'I love donuts mmmm donuts' )
+doc.each_word_pair{ |first, second| puts "#{first} #{second}" }
+
+The Enumerable module is a mixin that endows classes with all sorts of interesting collection-related methods. Here’s how Enumerable works: First, you make sure that your class has an each method, and then you include the Enumerable module in your class.
+
+doc.include?("make")
+to_a
+each_cons
+
+Finally, if the elements in your collection define the <=> operator, you can use the Enumerable-supplied sort method.
+
+
+This simple “bury the details in a method that takes a block” technique goes by the name of execute around. 
+
+class SomeApplication
+  def do_something
+    with_logging('load') { @doc = Document.load( 'resume.txt' ) }
+    # Do something with the document...
+    with_logging('save') { @doc.save } end
+    
+    # Rest of the class omitted...
+  def with_logging(description)
+    begin
+      @logger.debug( "Starting #{description}" )
+      yield
+      @logger.debug( "Completed #{description}" )
+    rescue
+      @logger.error( "#{description} failed!!")
+      raise
+    end 
+  end
+end
+
+All of the variables that are visible just before the opening do or { are still visible inside the code block. Code blocks drag along the scope in which they were cre- ated wherever they go. In the last example, this means that @doc object is automati- cally visible inside the code block—no need to pass it down as an argument.(The technical term for objects with this scope dragging property is closure, and some Ruby pro- grammers will use the terms closure and block interchangeably.)
+
+This doesn’t mean that respectable execute around methods don’t take any argu- ments. A good rule of thumb is that the only arguments you should pass from the
+application into an execute around method are those that the execute around method itself, not the block, will use. We can see this in our with_logging method. We passed in strings like 'Document load' and 'Document save' to the with_logging method, strings used by the method itself.
+Similarly, there is nothing wrong with the execute around method passing argu- ments that originate in the method itself into the block; in fact, many execute around methods do exactly that. For example, imagine that you need a method that opens a database connection, does something with it, and then ensures that the connection gets closed. You might come up with something like this:
+
+def with_database_connection( connection_info )
+  connection = Database.new( connection_info )
+  begin
+    yield( connection ) ensure
+    connection.close
+  end
+end
+
+Note that the with_database_connection method creates the new database connec- tion and then passes it into the block.
+
+Explicit Blocks
+
+def run_that_block( &that_block )
+  puts "About to run the block"
+  that_block.call
+  puts "Done running the block"
+end
+
+that_block.call if that_block
+
+Event listners:
+class Document
+  attr_accessor :load_listener
+  attr_accessor :save_listener
+  # Most of the class omitted...
+  def load( path )
+    @content = File.read( path )
+    load_listener.on_load( self, path ) if load_listener
+  end
+
+  def save( path )
+    File.open( path, 'w') { |f| f.print( @contents ) }
+    save_listener.on_save( self, path ) if save_listener
+  end 
+end
+
+
+or with blocks:
+
+class Document
+  # Most of the class omitted...
+  def on_save( &block )
+    @save_listener = block
+  end
+  def on_load( &block )
+    @load_listener = block
+  end
+  def load( path )
+    @content = File.read( path )
+    @load_listener.call( self, path ) if @load_listener
+  end
+  
+  def save( path )
+    File.open( path, 'w' ) { |f| f.print( @contents ) }
+    @save_listener.call( self, path ) if @save_listener
+  end 
+end
+
+
+Lazy initialization:
+
+class BlockBasedArchivalDocument
+  attr_reader :title, :author
+  def initialize(title, author, &block) @title = title
+    @author = author
+    @initializer_block = block
+  end
+
+  def content
+    if @initializer_block
+      @content = @initializer_block.call
+      @initializer_block = nil
+    end
+    @content 
+  end
+end
+
+
+When it comes to creating Proc objects, beware of false friends. Although calling Proc.new is nearly synonymous with lambda:
+    from_proc_new = Proc.new { puts "hello from a block" }
+It’s not quite synonymous enough......
+Lesson one is that if you are calling a method that takes a block, pause for a second before you put a return, next, or break in that block. Does it make sense here? Lesson two is that if you want a block object that behaves like the ones that Ruby generates when you pass a couple of braces into a method, use Proc.new. If you want something that will behave more like a reg- ular object with a single method, use lambda.2
+
+scoping variable:
+
+def some_method(doc)
+  big_array = Array.new(10000000)
+  # Do something with big_array... # And now get rid of it! big_array = nil
+  doc.on_load do |d|
+    puts "Hey, I've been loaded!"
+  end 
+end
+
+
+In the Wild: it...do end in RSpec, before_filter do | controller |, task :list_home, :role => 'production' do...
+
+Meta
+
+def self.inherited(subclass)
+  DocumentReader.reader_classes << subclass
+end
+
+def self.inherited(subclass)
+  DocumentReader.reader_classes << subclass
+end
+
+at_exit do
+  puts "Have a nice day."
+end
+
+method_missing,
+method_added
+proc_object = proc do |event, file, line, id, binding, klass|
+  puts "#{event} in #{file}/#{line} #{id} #{klass}"
+end
+set_trace_func(proc_object)
+require 'date'
+
+def const_missing(const_name)
+def method_missing( missing, *args )
+
+
+Rake uses const_missing to provide helpful warnings about depre- cated names. It seems that earlier versions of Rake defined the core Rake classes at the top level, without any encapsulating modules. In those bygone days the class of a Rake task was simply Task, with no module. 
+
