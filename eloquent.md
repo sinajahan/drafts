@@ -545,3 +545,49 @@ def method_missing( missing, *args )
 
 Rake uses const_missing to provide helpful warnings about depre- cated names. It seems that earlier versions of Rake defined the core Rake classes at the top level, without any encapsulating modules. In those bygone days the class of a Rake task was simply Task, with no module. 
 
+Deligate:
+
+def method_missing(name, *args)
+  check_for_expiration
+  @original_document.send(name, *args)
+end
+
+require 'delegate'
+class DocumentWrapper < SimpleDelegator
+  def initialize( real_doc )
+    super( real_doc )
+  end
+end
+
+That’s pretty much it. With just seven lines of code, we have a fully functional wrapper for any document.
+
+Method for replace_*:
+
+def method_missing( name, *args )
+    string_name = name.to_s
+    return super unless string_name =~ /^replace_\w+/
+    old_word = extract_old_word(string_name)
+    replace_word( old_word, args.first )
+end
+
+You also need to be aware of the likelihood that using method_missing will muck up the respond_to? method. 
+
+def respond_to?(name)
+  string_name = name.to_s
+  return true if string_name =~ /^replace_\w+/
+  super
+end
+
+Aside from letting you easily give a method several different names, alias_ method comes in handy when you are messing with the innards of an existing class. Here’s a version of our String monkey patch that uses alias_method to avoid repro- ducing the logic of the original + method:
+class String
+  alias_method :old_addition, :+
+  def +( other )
+    if other.kind_of? Document
+      new_content = self + other.content
+      return Document.new(other.title, other.author, new_content)
+    end
+    old_addition(other)
+  end 
+end
+
+
