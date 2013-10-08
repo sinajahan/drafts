@@ -590,4 +590,40 @@ class String
   end 
 end
 
+Although the name suggests otherwise, alias_method actually copies a method implementation, giving it a new name along the way. 
 
+In the same way that we aliased an existing method, we can make a public method private:
+class Document
+  private :word_count
+end
+Or a private method public again:
+class Document
+  public :word_count
+end
+We can even get rid of it all together:
+class Document
+  remove_method :word_count
+end
+
+if RUBY_VERSION >= '1.9'
+    def char_at( index )
+      @content[ index ]
+    end
+  else
+    def char_at( index )
+      @content[ index ].chr
+    end
+end
+
+class Document
+  def self.reload
+    remove_instance_methods
+    load( __FILE__ )
+  end
+  def self.remove_instance_methods
+    instance_methods(false).each do |method|
+      remove_method(method)
+    end
+  end
+  # Rest of the class omitted...
+end
