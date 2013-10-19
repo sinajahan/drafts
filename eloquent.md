@@ -627,3 +627,45 @@ class Document
   end
   # Rest of the class omitted...
 end
+
+--------------
+
+class StructuredDocument
+  attr_accessor :title, :author, :paragraphs
+  def initialize( title, author )
+    @title = title
+    @author = author
+    @paragraphs = []
+    yield( self ) if block_given?
+  end
+...
+end
+
+russ_cv = Resume.new( 'russ', 'resume') do |cv|
+  cv.name( 'Russ Olsen' )
+  cv.address( '1313 Mocking Bird Lane' )
+  cv.email( 'russ@russolsen.com' )
+  # Etc... 
+end
+
+class Object
+  def self.simple_attr_reader(name)
+    code = "def #{name}; @#{name}; end"
+    class_eval( code )
+  end
+end
+
+class Object
+  def self.simple_attr_writer(name)
+    method_name = "#{name}="
+    define_method( method_name ) do |value|
+      variable_name = "@#{name}"
+      instance_variable_set( variable_name, value )
+    end
+  end 
+end
+
+As useful and easy as internal DSLs can be, they do have their downsides. The first is that internal DSLs tend to produce really bad error messages. Think about what would happen if we made a mistake in a Ripper script, perhaps like this:
+Clearly, we forgot the do in the call to on_path.
+
+
