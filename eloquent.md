@@ -192,13 +192,14 @@ class Document
 end
 ````
 
-Modueles
+Modules
 ========
 
 So when should you create a name space module and when should you let your classes go naked? An easy rule of thumb is that if you find yourself creating a lot of names that all start with the same word, perhaps TonsOTonerPrintQueue and TonsOTonerAdministration, then you just may need a TonsOToner module.
 
 A Home for Those Utility Methods:
 
+````ruby
 module WordProcessor
   def self.points_to_inches( points )
     points / 72.0
@@ -211,9 +212,11 @@ module WordProcessor
 end
 
 an_inch_full_of_points = WordProcessor.inches_to_points(1.0)
+````
 
 You might, for instance, have a module full of methods that know how to locate documents:
 
+````ruby
 module Finders
   def find_by_name( name )
     # Find a document by name...
@@ -223,26 +226,36 @@ module Finders
     # Find a document by id
   end 
 end
+````
 
 You would like to get the Finders methods into your Document class as class methods. One way to get this done is to do this:
 
+````ruby
 class Document
   # Most of the class omitted...
   class << self
     include Finders
   end
 end
+````
 
 This code includes the module into the singleton class of Document, effectively making the methods of Finders singleton—and therefore class—methods of Document:
+````ruby
     war_and_peace = Document.find_by_name( 'War And Peace' )
+````
+
 Including modules into the singleton class is a common enough task that Ruby has a special shortcut for it in the form of extend:
+````ruby
 class Document
   extend Finders
   # Most of the class omitted...
 end
+````
 
 Run this code and you will end up with class-level Document.find_by_name and find_by_id methods.
 
+Blocks
+======
 
 When you tack a block onto the end of a method call, Ruby will package up the block as sort of a secret argument and (behind the scenes) passes this secret argument to the method. Inside the method you can detect whether your caller has actually passed in a block with the block_given? method and fire off the block (if there is one) with yield:
 
