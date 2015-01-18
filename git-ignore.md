@@ -1,3 +1,4 @@
+````bash
 ### OS-X generated files
 .Trashes
 .Spotlight-V100
@@ -19,3 +20,4 @@ Thumbs.db
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+````
